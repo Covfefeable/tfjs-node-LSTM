@@ -1,5 +1,6 @@
 import { Express, Request, Response, Router } from "express";
 import { commonRes } from "../utils/response";
+import { train } from "../lstm";
 
 interface RouterConf {
   path: string;
@@ -17,7 +18,17 @@ const routerConf: Array<RouterConf> = [
       };
       res.status(200).send(commonRes(result));
     }),
-  }
+  },
+  {
+    path: "/api",
+    router: Router().get("/train", async (req: Request, res: Response) => {
+      await train();
+      const result = {
+        status: "training",
+      };
+      res.status(200).send(commonRes(result));
+    }),
+  },
 ];
 
 function routes(app: Express) {

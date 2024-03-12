@@ -1,5 +1,5 @@
-# express-server-template
-a nodejs server template using express
+# tensorflow-nodejs lstm experimental project
+stock comment generator
 
 ## Usage
 ```bash

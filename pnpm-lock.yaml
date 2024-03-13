@@ -26,6 +26,9 @@ dependencies:
   pino-pretty:
     specifier: ^10.2.3
     version: 10.2.3
+  segment:
+    specifier: ^0.1.3
+    version: 0.1.3
 
 devDependencies:
   '@types/express':
@@ -1529,6 +1532,11 @@ packages:
 
   /seedrandom@2.4.4:
     resolution: {integrity: sha512-9A+PDmgm+2du77B5i0Ip2cxOqqHjgNxnBgglxLcX78A2D6c2rTo61z4jnVABpF4cKeDMDG+cmXXvdnqse2VqMA==}
+    dev: false
+
+  /segment@0.1.3:
+    resolution: {integrity: sha512-4Kjk38q0ykMIK5a+uo2MjTM2EECJaLLQOkdptceiYHTFZU/iciWXiFiGTG8Or/cfO2RqjlLw/s6rqijxAFSKFQ==}
+    engines: {node: '>= 0.4.0'}
     dev: false
 
   /semver@6.3.1:

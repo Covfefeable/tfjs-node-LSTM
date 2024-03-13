@@ -22,7 +22,7 @@ const routerConf: Array<RouterConf> = [
   {
     path: "/api",
     router: Router().get("/train", async (req: Request, res: Response) => {
-      await train();
+      train();
       const result = {
         status: "training",
       };

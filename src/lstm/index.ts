@@ -1,7 +1,5 @@
 import * as tf from "@tensorflow/tfjs-node";
-import fs from "fs";
 import { generateTrainingData, tokenlize } from "../utils";
-const segment = require("segment");
 
 const config = {
   modelSavePath: "file://./src/model",
@@ -11,38 +9,33 @@ const config = {
 
 const train = async () => {
   tokenlize(config.xsDataSetPath);
-  console.log('tokenlized')
+  console.log("tokenlized");
   const { xs, ys } = generateTrainingData(
     config.xsDataSetPath,
     config.ysDataSetPath,
     20
   );
 
-  console.log('training data generated')
+  console.log("training data generated");
 
-  const input = tf.tensor2d(xs);
+  const input = tf.tensor2d(xs).reshape([xs.length, 20, 1]);
   const output = tf.oneHot(tf.tensor(ys).cast("int32"), 2);
-
-  console.log(input, output);
 
   const model = tf.sequential();
 
-  model.add(
-    tf.layers.dense({
-      inputShape: [20],
-      units: 256,
-      activation: "relu",
-    })
-  );
   // todo
   model.add(
-    tf.layers.dense({
-      units: 2,
-      activation: "sigmoid",
+    tf.layers.lstm({
+      inputShape: [20, 1],
+      units: 256,
+      returnSequences: true
     })
   );
+  model.add(tf.layers.lstm({ units: 128, returnSequences: true }));
+  model.add(tf.layers.lstm({ units: 64, }));
+  model.add(tf.layers.dense({ units: 2, activation: "softmax" }));
   model.compile({
-    loss: "binaryCrossentropy",
+    loss: "categoricalCrossentropy",
     optimizer: tf.train.adam(0.1),
     metrics: ["accuracy"],
   });

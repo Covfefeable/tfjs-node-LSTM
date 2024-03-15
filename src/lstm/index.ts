@@ -1,7 +1,8 @@
 import * as tf from "@tensorflow/tfjs-node";
-import { generateTrainingData, tokenlize } from "../utils";
+import { generateTrainingData, sentence2Token, tokenlize } from "../utils";
 
 const config = {
+  maxWordNum: 20,
   modelSavePath: "file://./src/model",
   xsDataSetPath: "./src/dataset/comments.txt",
   ysDataSetPath: "./src/dataset/rate.txt",
@@ -13,12 +14,12 @@ const train = async () => {
   const { xs, ys } = generateTrainingData(
     config.xsDataSetPath,
     config.ysDataSetPath,
-    20
+    config.maxWordNum
   );
 
   console.log("training data generated");
 
-  const input = tf.tensor2d(xs).reshape([xs.length, 20, 1]);
+  const input = tf.tensor2d(xs).reshape([xs.length, config.maxWordNum, 1]);
   const output = tf.oneHot(tf.tensor(ys).cast("int32"), 2);
 
   const model = tf.sequential();
@@ -26,13 +27,13 @@ const train = async () => {
   // todo
   model.add(
     tf.layers.lstm({
-      inputShape: [20, 1],
+      inputShape: [config.maxWordNum, 1],
       units: 256,
-      returnSequences: true
+      returnSequences: true,
     })
   );
   model.add(tf.layers.lstm({ units: 128, returnSequences: true }));
-  model.add(tf.layers.lstm({ units: 64, }));
+  model.add(tf.layers.lstm({ units: 64 }));
   model.add(tf.layers.dense({ units: 2, activation: "softmax" }));
   model.compile({
     loss: "categoricalCrossentropy",
@@ -52,4 +53,13 @@ const train = async () => {
   await model.save(config.modelSavePath);
 };
 
-export { train };
+const predict = async (input: string) => {
+  const model = await tf.loadLayersModel(config.modelSavePath + "/model.json");
+  const tokenizedInput = sentence2Token(input, config.maxWordNum);
+  const inputTensor = tf
+    .tensor2d([tokenizedInput])
+    .reshape([1, config.maxWordNum, 1]);
+  return model.predict(inputTensor);
+};
+
+export { train, predict };

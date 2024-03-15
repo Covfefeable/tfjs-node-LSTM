@@ -1,58 +1,52 @@
 import * as tf from "@tensorflow/tfjs-node";
 import fs from "fs";
-import { generateTrainingData, str2Token, token2Str, tokenize } from "../utils";
+import { generateTrainingData, tokenlize } from "../utils";
 const segment = require("segment");
 
 const config = {
   modelSavePath: "file://./src/model",
-  dataSetPath: "./src/dataset/comments.txt",
+  xsDataSetPath: "./src/dataset/comments.txt",
+  ysDataSetPath: "./src/dataset/rate.txt",
 };
 
 const train = async () => {
-  tokenize(config.dataSetPath);
-  const data = generateTrainingData(config.dataSetPath);
-  const rateArr = fs
-    .readFileSync("./src/dataset/rate.txt", "utf-8")
-    .split("\r\n")
-    .map((item: string) => Number(item));
+  tokenlize(config.xsDataSetPath);
+  console.log('tokenlized')
+  const { xs, ys } = generateTrainingData(
+    config.xsDataSetPath,
+    config.ysDataSetPath,
+    20
+  );
 
-  const input = tf.tensor3d(data.tokenlizedArr);
-  const output = tf.oneHot(tf.tensor(rateArr).cast("int32"), 2);
+  console.log('training data generated')
+
+  const input = tf.tensor2d(xs);
+  const output = tf.oneHot(tf.tensor(ys).cast("int32"), 2);
+
+  console.log(input, output);
 
   const model = tf.sequential();
 
   model.add(
-    tf.layers.lstm({
+    tf.layers.dense({
+      inputShape: [20],
       units: 256,
-      inputShape: [data.maxSegLen, data.segStrMaxLen],
-      returnSequences: true,
+      activation: "relu",
     })
   );
-  model.add(
-    tf.layers.lstm({
-      units: 128,
-      returnSequences: true,
-    })
-  );
-  model.add(
-    tf.layers.lstm({
-      units: 64,
-    })
-  );
+  // todo
   model.add(
     tf.layers.dense({
       units: 2,
-      activation: "softmax",
+      activation: "sigmoid",
     })
   );
-
   model.compile({
-    loss: "categoricalCrossentropy",
+    loss: "binaryCrossentropy",
     optimizer: tf.train.adam(0.1),
     metrics: ["accuracy"],
   });
   model.summary();
-
   await model.fit(input, output, {
     epochs: 10,
     shuffle: true,
@@ -63,30 +57,6 @@ const train = async () => {
   });
 
   await model.save(config.modelSavePath);
-
-  const result = await predict("测试");
-  console.log(result);
-};
-
-const predict = async (str: string) => {
-  const model = await tf.loadLayersModel(config.modelSavePath + "/model.json");
-  const seg = new segment();
-  seg.useDefault();
-  const segArr: string[] = seg
-    .doSegment(str)
-    .map((item: { w: string }) => item.w);
-  let tokenlizedArr = segArr.map((str) => str2Token(str, 10));
-  if (tokenlizedArr.length < 36) {
-    tokenlizedArr = tokenlizedArr.concat(
-      Array(36 - tokenlizedArr.length).fill(str2Token("", 10))
-    );
-  }
-  console.log(tokenlizedArr);
-  const input = tf.tensor3d([tokenlizedArr]);
-  const result = model.predict(input);
-  // @ts-ignore
-  const rate = result.dataSync()[0];
-  return rate;
 };
 
 export { train };

@@ -1,92 +1,91 @@
 import fs from "fs";
 const segment = require("segment");
 
-const tokenize = (filePath: string) => {
+// 初始化分词器
+const seg = new segment();
+seg.useDefault();
+
+const tokenlize = (filePath: string) => {
   const data = fs.readFileSync(filePath, "utf-8");
-  const arr = data.split("");
-  arr.unshift("");
-  const charSet = new Set(arr);
+  // 去掉双引号
+  const arr = data.split("\r\n").map((str) => str.replace(/"/g, ""));
+
+  // 生成词表
+  const wordSet: Set<string> = new Set();
+  // 0与空字符串对应
+  wordSet.add("");
+  arr.forEach((comment) => {
+    const segArr: string[] = seg
+      .doSegment(comment)
+      .map((item: { w: string }) => item.w);
+    segArr.forEach((word) => wordSet.add(word));
+  });
+
   fs.writeFileSync(
-    `./src/dataset/charSet.json`,
-    JSON.stringify(Array.from(charSet))
+    `./src/dataset/wordSet.json`,
+    JSON.stringify(Array.from(wordSet))
   );
 
-  const charMap: Record<string, number> = {};
-  Array.from(charSet).forEach((char, index) => {
-    charMap[char] = index;
+  // 生成词表映射
+  const wordMap: Record<string, number> = {};
+  Array.from(wordSet).forEach((word, index) => {
+    wordMap[word] = index;
   });
-  fs.writeFileSync(`./src/dataset/charMap.json`, JSON.stringify(charMap));
+  fs.writeFileSync(`./src/dataset/wordMap.json`, JSON.stringify(wordMap));
 
-  const charMapReverse: Record<number, string> = {};
-  Array.from(charSet).forEach((char, index) => {
-    charMapReverse[index] = char;
+  // 生成词表反向映射
+  const wordMapReverse: Record<number, string> = {};
+  Array.from(wordSet).forEach((word, index) => {
+    wordMapReverse[index] = word;
   });
   fs.writeFileSync(
-    `./src/dataset/charMapReverse.json`,
-    JSON.stringify(charMapReverse)
+    `./src/dataset/wordMapReverse.json`,
+    JSON.stringify(wordMapReverse)
   );
 };
 
-const str2Token = (str: string, maxLength: number = 100): number[] => {
-  const charMap = JSON.parse(
-    fs.readFileSync(`./src/dataset/charMap.json`, "utf-8")
+const sentence2Token = (str: string, segMaxLen: number = 10): number[] => {
+  const wordMap = JSON.parse(
+    fs.readFileSync(`./src/dataset/wordMap.json`, "utf-8")
   );
+  const wordArr = seg.doSegment(str).map((item: { w: string }) => item.w);
+  const segArr: number[] = wordArr.map((word: string) => wordMap[word] || 0);
   // 补全到最大长度
-  const arr = str.split("").map((char) => charMap[char] || 0);
-  arr.length = maxLength;
-  arr.fill(0, str.length);
-  return arr;
+  segArr.length = segMaxLen;
+  wordArr.length < segMaxLen && segArr.fill(0, wordArr.length);
+  return segArr;
 };
 
-const token2Str = (tokens: number[]): string => {
-  const charMapReverse = JSON.parse(
-    fs.readFileSync(`./src/dataset/charMapReverse.json`, "utf-8")
+const token2Sentence = (tokens: number[]): string => {
+  const wordMapReverse = JSON.parse(
+    fs.readFileSync(`./src/dataset/wordMapReverse.json`, "utf-8")
   );
-  return tokens.map((token) => charMapReverse[token] || "").join("");
+  return tokens.map((token) => wordMapReverse[token] || "").join("");
 };
 
 const generateTrainingData = (
-  filePath: string,
-  allowedSegMaxLen: number = 10
+  xsfilePath: string,
+  ysfilePath: string,
+  SegMaxLen: number = 10
 ) => {
-  const data = fs.readFileSync(filePath, "utf-8").replace(/"/g, "");
-  const arr = data.split("\r\n").filter((str) => str);
+  const xsdata = fs.readFileSync(xsfilePath, "utf-8").replace(/"/g, "");
+  const sentenceArr = xsdata.split("\r\n").filter((str) => str);
 
-  const seg = new segment();
-  seg.useDefault();
-  let segizedArr: string[][] = arr.map((str) => {
-    return seg.doSegment(str).map((item: { w: string }) => item.w);
-  });
-  let segStrMaxLen = Math.max(
-    ...segizedArr.map((str) => Math.max(...str.map((item) => item.length)))
-  );
-  if (segStrMaxLen > allowedSegMaxLen) {
-    segizedArr = segizedArr.map((strArr) => {
-      return strArr.map((str) => {
-        if (str.length > allowedSegMaxLen) {
-          str = str.slice(0, allowedSegMaxLen);
-        }
-        return str;
-      });
-    });
-    segStrMaxLen = allowedSegMaxLen;
+  const ysdata = fs.readFileSync(ysfilePath, "utf-8").replace(/"/g, "");
+  const rateArr = ysdata.split("\r\n").filter((str) => str).map(Number);
+
+  if (sentenceArr.length !== rateArr.length) {
+    throw new Error("xs 与 ys 长度不一致，请检查");
   }
 
-  const maxSegLen = Math.max(...segizedArr.map((arr) => arr.length));
-
-  const tokenlizedArr = segizedArr.map((strArr, index) => {
-    if (strArr.length < maxSegLen) {
-      strArr = strArr.concat(Array(maxSegLen - strArr.length).fill(""));
-    }
-    console.log(`done: ${index + 1}/${segizedArr.length}`);
-    return strArr.map((str) => str2Token(str, segStrMaxLen));
+  const sentenceTokenlizedArr = sentenceArr.map((str) => {
+    return sentence2Token(str, SegMaxLen);
   });
 
   return {
-    maxSegLen,
-    segStrMaxLen,
-    tokenlizedArr,
+    xs: sentenceTokenlizedArr,
+    ys: rateArr,
   };
 };
 
-export { tokenize, str2Token, token2Str, generateTrainingData };
+export { tokenlize, sentence2Token, token2Sentence, generateTrainingData };

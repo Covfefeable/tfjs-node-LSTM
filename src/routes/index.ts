@@ -1,6 +1,7 @@
 import { Express, Request, Response, Router } from "express";
 import { commonRes } from "../utils/response";
-import { train } from "../lstm";
+import { emotionTrain } from "../lstm/emotion";
+import { generateTextResponse, generationTrain } from "../lstm/generation";
 
 interface RouterConf {
   path: string;
@@ -21,10 +22,29 @@ const routerConf: Array<RouterConf> = [
   },
   {
     path: "/api",
-    router: Router().get("/train", async (req: Request, res: Response) => {
-      train();
+    router: Router().get("/emotion/train", async (req: Request, res: Response) => {
+      emotionTrain();
       const result = {
         status: "training",
+      };
+      res.status(200).send(commonRes(result));
+    }),
+  },
+  {
+    path: "/api",
+    router: Router().get("/generation/train", async (req: Request, res: Response) => {
+      generationTrain();
+      const result = {
+        status: "training",
+      };
+      res.status(200).send(commonRes(result));
+    }),
+  },
+  {
+    path: "/api",
+    router: Router().get("/generation/predict", async (req: Request, res: Response) => {
+      const result = {
+        output: await generateTextResponse(req.query.input as string),
       };
       res.status(200).send(commonRes(result));
     }),

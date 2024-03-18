@@ -1,5 +1,5 @@
 # tensorflow-nodejs lstm experimental project
-stock comment generator
+stock comment generator & emotion analysis
 
 ## Usage
 ```bash

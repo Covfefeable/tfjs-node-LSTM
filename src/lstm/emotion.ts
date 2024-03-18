@@ -3,12 +3,12 @@ import { generateTrainingData, sentence2Token, tokenlize } from "../utils";
 
 const config = {
   maxWordNum: 20,
-  modelSavePath: "file://./src/model",
+  modelSavePath: "file://./src/model/emotion/",
   xsDataSetPath: "./src/dataset/comments.txt",
   ysDataSetPath: "./src/dataset/rate.txt",
 };
 
-const train = async () => {
+const emotionTrain = async () => {
   tokenlize(config.xsDataSetPath);
   console.log("tokenlized");
   const { xs, ys } = generateTrainingData(
@@ -62,4 +62,4 @@ const predict = async (input: string) => {
   return model.predict(inputTensor);
 };
 
-export { train, predict };
+export { emotionTrain, predict };

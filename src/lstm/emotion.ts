@@ -53,7 +53,7 @@ const emotionTrain = async () => {
   await model.save(config.modelSavePath);
 };
 
-const predict = async (input: string) => {
+const emotionPredict = async (input: string) => {
   const model = await tf.loadLayersModel(config.modelSavePath + "/model.json");
   const tokenizedInput = sentence2Token(input, config.maxWordNum);
   const inputTensor = tf
@@ -62,4 +62,4 @@ const predict = async (input: string) => {
   return model.predict(inputTensor);
 };
 
-export { emotionTrain, predict };
+export { emotionTrain, emotionPredict };

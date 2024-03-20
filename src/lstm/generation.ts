@@ -1,6 +1,7 @@
 import * as tf from "@tensorflow/tfjs-node";
 import fs from "fs";
 import { sentence2Token, tokenlize } from "../utils";
+import log from "../utils/logger";
 
 const config = {
   dataSetDir: "./src/dataset",
@@ -10,6 +11,7 @@ const config = {
 };
 
 const generationTrain = async () => {
+  console.log("preparing training data, it may take a while");
   tokenlize(`${config.dataSetDir}/comments.txt`);
 
   const wordMap = JSON.parse(
@@ -36,23 +38,23 @@ const generationTrain = async () => {
   }
 
   const input = tf
-    .zeros([sentences.length, config.maxSentenceLen, wordSet.length])
-    .arraySync() as number[][][];
+    .zeros([sentences.length, config.maxSentenceLen])
+    .arraySync() as number[][];
   const output = tf
     .zeros([sentences.length, wordSet.length])
     .arraySync() as number[][];
 
-  console.log("input shape:", input.length, input[0].length, input[0][0].length);
+  console.log("input shape:", input.length, input[0].length);
   console.log("output shape:", output.length, output[0].length);
 
   sentences.forEach((sentence: string[], index) => {
     sentence.forEach((word: string, wordIndex) => {
-      wordMap[word] && (input[index][wordIndex][wordMap[word]] = 1);
+      wordMap[word] && (input[index][wordIndex] = wordMap[word]);
     });
     output[index][wordMap[nextWords[index]]] = 1;
   });
 
-  let model = null;
+  let model = null as any;
   // 如果存在模型则加载模型继续训练，如果 unique word 不一致则会报错
   if (fs.existsSync(`file://${config.modelDir}/model.json`)) {
     model = await tf.loadLayersModel(`${config.modelDir}/model.json`);
@@ -60,20 +62,27 @@ const generationTrain = async () => {
   } else {
     model = tf.sequential();
     model.add(
-      tf.layers.lstm({
-        units: 128,
-        returnSequences: true,
-        inputShape: [config.maxSentenceLen, wordSet.length],
+      tf.layers.embedding({
+        inputDim: wordSet.length,
+        outputDim: 128,
+        inputLength: config.maxSentenceLen,
       })
     );
-    model.add(tf.layers.dropout({ rate: 0.2 }));
+
+    model.add(
+      tf.layers.bidirectional({
+        layer: tf.layers.lstm({ units: 64, returnSequences: true }),
+      })
+    );
+
     model.add(
       tf.layers.lstm({
-        units: 128,
-        returnSequences: false,
+        units: 64,
+        returnSequences: true,
+        goBackwards: true,
       })
     );
-    model.add(tf.layers.dropout({ rate: 0.2 }));
+    model.add(tf.layers.flatten());
     model.add(
       tf.layers.dense({ units: wordSet.length, activation: "softmax" })
     );
@@ -85,15 +94,17 @@ const generationTrain = async () => {
   });
   model.summary();
 
-  const xs = tf.tensor3d(input as number[][][]);
+  const xs = tf.tensor2d(input as number[][]);
   const ys = tf.tensor2d(output as number[][]);
 
   await model.fit(xs, ys, {
-    epochs: 100,
+    epochs: 20,
     batchSize: 32,
     callbacks: {
-      onEpochEnd: async (epoch, logs) => {
-        console.log(logs?.loss);
+      onEpochEnd: async () => {
+        await model.save(`file://${config.modelDir}`);
+        const result = await generateTextResponse("你们");
+        console.log(`result: ${result}`);
       },
     },
   });
@@ -106,13 +117,7 @@ const predict = async (input: string) => {
     `file://${config.modelDir}/model.json`
   );
   const tokenizedInput = sentence2Token(input, config.maxSentenceLen);
-  const wordSet = JSON.parse(
-    fs.readFileSync(`${config.dataSetDir}/wordSet.json`, "utf-8")
-  );
-  const inputTensor = tf.oneHot(
-    tf.tensor2d([tokenizedInput]).cast("int32"),
-    wordSet.length
-  );
+  const inputTensor = tf.tensor2d([tokenizedInput]);
   const result = model.predict(inputTensor);
   const maxIndex = (result as tf.Tensor).argMax(1).dataSync()[0];
   const wordReverseMap = JSON.parse(

@@ -1,5 +1,4 @@
 import * as tf from "@tensorflow/tfjs-node";
-import nj from "numjs";
 import fs from "fs";
 import { sentence2Token, tokenlize } from "../utils";
 
@@ -36,21 +35,21 @@ const generationTrain = async () => {
     nextWords.push(listWords[i + config.maxSentenceLen]);
   }
 
-  const input = nj.zeros([
-    sentences.length,
-    config.maxSentenceLen,
-    wordSet.length,
-  ]);
-  const output = nj.zeros([sentences.length, wordSet.length]);
+  const input = tf
+    .zeros([sentences.length, config.maxSentenceLen, wordSet.length])
+    .arraySync() as number[][][];
+  const output = tf
+    .zeros([sentences.length, wordSet.length])
+    .arraySync() as number[][];
 
-  console.log("input shape:", input.shape);
-  console.log("output shape:", output.shape);
+  console.log("input shape:", input.length, input[0].length, input[0][0].length);
+  console.log("output shape:", output.length, output[0].length);
 
   sentences.forEach((sentence: string[], index) => {
     sentence.forEach((word: string, wordIndex) => {
-      wordMap[word] && input.set(index, wordIndex, wordMap[word], 1);
+      wordMap[word] && (input[index][wordIndex][wordMap[word]] = 1);
     });
-    output.set(index, wordMap[nextWords[index]], 1);
+    output[index][wordMap[nextWords[index]]] = 1;
   });
 
   let model = null;
@@ -86,8 +85,8 @@ const generationTrain = async () => {
   });
   model.summary();
 
-  const xs = tf.tensor3d(input.tolist() as number[][][]);
-  const ys = tf.tensor2d(output.tolist() as number[][]);
+  const xs = tf.tensor3d(input as number[][][]);
+  const ys = tf.tensor2d(output as number[][]);
 
   await model.fit(xs, ys, {
     epochs: 100,
@@ -103,7 +102,9 @@ const generationTrain = async () => {
 };
 
 const predict = async (input: string) => {
-  const model = await tf.loadLayersModel(`file://${config.modelDir}/model.json`);
+  const model = await tf.loadLayersModel(
+    `file://${config.modelDir}/model.json`
+  );
   const tokenizedInput = sentence2Token(input, config.maxSentenceLen);
   const wordSet = JSON.parse(
     fs.readFileSync(`${config.dataSetDir}/wordSet.json`, "utf-8")

@@ -1,18 +1,20 @@
 import * as tf from "@tensorflow/tfjs-node";
 import fs from "fs";
+import path from "path";
 import { sentence2Token, tokenlize } from "../utils";
-import log from "../utils/logger";
 
 const config = {
-  dataSetDir: "./src/dataset",
-  modelDir: "./src/model/generation",
+  dataSetDir: path.join(path.resolve("./"), "./src/dataset"),
+  modelDir: path.join(path.resolve("./"), "./src/model/generation"),
   maxSentenceLen: 20,
   step: 3,
 };
 
 const generationTrain = async () => {
-  console.log("preparing training data, it may take a while");
-  tokenlize(`${config.dataSetDir}/comments.txt`);
+  if (fs.existsSync(`file://${config.dataSetDir}/wordArr.json`)) {
+    console.log("preparing training data, it may take a while");
+    tokenlize(`${config.dataSetDir}/comments.txt`);
+  }
 
   const wordMap = JSON.parse(
     fs.readFileSync(`${config.dataSetDir}/wordMap.json`, "utf-8")
@@ -56,9 +58,9 @@ const generationTrain = async () => {
 
   let model = null as any;
   // 如果存在模型则加载模型继续训练，如果 unique word 不一致则会报错
-  if (fs.existsSync(`file://${config.modelDir}/model.json`)) {
-    model = await tf.loadLayersModel(`${config.modelDir}/model.json`);
-    console.log("existed");
+  if (fs.existsSync(`${config.modelDir}/model.json`)) {
+    model = await tf.loadLayersModel(`file://${config.modelDir}/model.json`);
+    console.log("model existed, continue training");
   } else {
     model = tf.sequential();
     model.add(
@@ -70,19 +72,33 @@ const generationTrain = async () => {
     );
 
     model.add(
-      tf.layers.bidirectional({
-        layer: tf.layers.lstm({ units: 64, returnSequences: true }),
+      tf.layers.lstm({
+        units: 256,
+        returnSequences: true,
+      })
+    );
+
+    model.add(
+      tf.layers.dropout({
+        rate: 0.2,
       })
     );
 
     model.add(
       tf.layers.lstm({
-        units: 64,
+        units: 128,
         returnSequences: true,
-        goBackwards: true,
+        // goBackwards: true,
       })
     );
+    model.add(
+      tf.layers.dropout({
+        rate: 0.2,
+      })
+    );
+
     model.add(tf.layers.flatten());
+
     model.add(
       tf.layers.dense({ units: wordSet.length, activation: "softmax" })
     );
@@ -98,7 +114,7 @@ const generationTrain = async () => {
   const ys = tf.tensor2d(output as number[][]);
 
   await model.fit(xs, ys, {
-    epochs: 20,
+    epochs: 200,
     batchSize: 32,
     callbacks: {
       onEpochEnd: async () => {

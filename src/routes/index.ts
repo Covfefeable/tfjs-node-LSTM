@@ -1,6 +1,6 @@
 import { Express, Request, Response, Router } from "express";
 import { commonRes } from "../utils/response";
-import { emotionTrain } from "../lstm/emotion";
+import { emotionPredict, emotionTrain } from "../lstm/emotion";
 import { generateTextResponse, generationTrain } from "../lstm/generation";
 
 interface RouterConf {
@@ -36,6 +36,15 @@ const routerConf: Array<RouterConf> = [
       generationTrain();
       const result = {
         status: "training",
+      };
+      res.status(200).send(commonRes(result));
+    }),
+  },
+  {
+    path: "/api",
+    router: Router().get("/emotion/predict", async (req: Request, res: Response) => {
+      const result = {
+        output: await emotionPredict(req.query.input as string),
       };
       res.status(200).send(commonRes(result));
     }),

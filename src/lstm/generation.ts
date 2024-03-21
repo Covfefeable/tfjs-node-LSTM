@@ -6,12 +6,12 @@ import { sentence2Token, tokenlize } from "../utils";
 const config = {
   dataSetDir: path.join(path.resolve("./"), "./src/dataset"),
   modelDir: path.join(path.resolve("./"), "./src/model/generation"),
-  maxSentenceLen: 20,
+  maxWordNum: 20,
   step: 3,
 };
 
 const generationTrain = async () => {
-  if (fs.existsSync(`file://${config.dataSetDir}/wordArr.json`)) {
+  if (!fs.existsSync(`file://${config.dataSetDir}/wordArr.json`)) {
     console.log("preparing training data, it may take a while");
     tokenlize(`${config.dataSetDir}/comments.txt`);
   }
@@ -32,15 +32,15 @@ const generationTrain = async () => {
   const nextWords: string[] = [];
   for (
     let i = 0;
-    i < listWords.length - config.maxSentenceLen;
+    i < listWords.length - config.maxWordNum;
     i += config.step
   ) {
-    sentences.push(listWords.slice(i, i + config.maxSentenceLen));
-    nextWords.push(listWords[i + config.maxSentenceLen]);
+    sentences.push(listWords.slice(i, i + config.maxWordNum));
+    nextWords.push(listWords[i + config.maxWordNum]);
   }
 
   const input = tf
-    .zeros([sentences.length, config.maxSentenceLen])
+    .zeros([sentences.length, config.maxWordNum])
     .arraySync() as number[][];
   const output = tf
     .zeros([sentences.length, wordSet.length])
@@ -67,7 +67,7 @@ const generationTrain = async () => {
       tf.layers.embedding({
         inputDim: wordSet.length,
         outputDim: 128,
-        inputLength: config.maxSentenceLen,
+        inputLength: config.maxWordNum,
       })
     );
 
@@ -132,7 +132,7 @@ const predict = async (input: string) => {
   const model = await tf.loadLayersModel(
     `file://${config.modelDir}/model.json`
   );
-  const tokenizedInput = sentence2Token(input, config.maxSentenceLen);
+  const tokenizedInput = sentence2Token(input, config.maxWordNum);
   const inputTensor = tf.tensor2d([tokenizedInput]);
   const result = model.predict(inputTensor);
   const maxIndex = (result as tf.Tensor).argMax(1).dataSync()[0];

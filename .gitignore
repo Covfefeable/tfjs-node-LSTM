@@ -2,3 +2,4 @@ node_modules
 build
 src/model/
 src/dataset/word*
+src/dataset/sentences*

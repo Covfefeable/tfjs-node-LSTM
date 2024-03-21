@@ -1,65 +1,115 @@
 import * as tf from "@tensorflow/tfjs-node";
-import { generateTrainingData, sentence2Token, tokenlize } from "../utils";
+import { sentence2Token, tokenlize } from "../utils";
+import path from "path";
+import fs, { readFileSync } from "fs";
 
 const config = {
   maxWordNum: 20,
-  modelSavePath: "file://./src/model/emotion/",
-  xsDataSetPath: "./src/dataset/comments.txt",
-  ysDataSetPath: "./src/dataset/rate.txt",
+  dataSetDir: path.join(path.resolve("./"), "./src/dataset"),
+  modelDir: path.join(path.resolve("./"), "./src/model/emotion"),
 };
 
 const emotionTrain = async () => {
-  tokenlize(config.xsDataSetPath);
-  console.log("tokenlized");
-  const { xs, ys } = generateTrainingData(
-    config.xsDataSetPath,
-    config.ysDataSetPath,
-    config.maxWordNum
+  if (!fs.existsSync(`${config.dataSetDir}/wordArr.json`)) {
+    console.log("preparing training data, it may take a while");
+    tokenlize(`${config.dataSetDir}/comments.txt`);
+  }
+
+  const wordSet = JSON.parse(
+    fs.readFileSync(`${config.dataSetDir}/wordSet.json`, "utf-8")
   );
 
-  console.log("training data generated");
-
-  const input = tf.tensor2d(xs).reshape([xs.length, config.maxWordNum, 1]);
-  const output = tf.oneHot(tf.tensor(ys).cast("int32"), 2);
+  const sentences: number[][] = JSON.parse(
+    fs.readFileSync(`${config.dataSetDir}/sentences.json`, "utf-8")
+  );
+  const rateText = readFileSync(`${config.dataSetDir}/rate.txt`, "utf-8");
+  const rate: number[] = rateText.split("\r\n").map((str) => str.replace(/"/g, "")).map(Number)
+  const input = tf.tensor2d(sentences);
+  const output = tf.oneHot(tf.tensor(rate).cast("int32"), 2);
 
   const model = tf.sequential();
-
-  // todo
+  model.add(
+    tf.layers.embedding({
+      inputDim: wordSet.length,
+      outputDim: 128,
+      inputLength: config.maxWordNum,
+    })
+  );
   model.add(
     tf.layers.lstm({
-      inputShape: [config.maxWordNum, 1],
       units: 256,
       returnSequences: true,
     })
   );
-  model.add(tf.layers.lstm({ units: 128, returnSequences: true }));
-  model.add(tf.layers.lstm({ units: 64 }));
+
+  model.add(
+    tf.layers.dropout({
+      rate: 0.2,
+    })
+  );
+
+  model.add(
+    tf.layers.lstm({
+      units: 128,
+      returnSequences: true,
+    })
+  );
+  model.add(
+    tf.layers.dropout({
+      rate: 0.2,
+    })
+  );
+
+  model.add(tf.layers.flatten());
   model.add(tf.layers.dense({ units: 2, activation: "softmax" }));
   model.compile({
     loss: "categoricalCrossentropy",
-    optimizer: tf.train.adam(0.1),
+    optimizer: tf.train.adam(0.002),
     metrics: ["accuracy"],
   });
   model.summary();
   await model.fit(input, output, {
-    epochs: 10,
+    epochs: 50,
     shuffle: true,
-    // @ts-ignore
-    onEpochEnd: (epoch, logs) => {
-      console.log("Epoch: " + epoch + " Loss: " + logs.loss);
+    callbacks: {
+      onEpochEnd: async () => {
+        await model.save(`file://${config.modelDir}`);
+        await testAccuracy();
+      },
     },
   });
-
-  await model.save(config.modelSavePath);
 };
 
 const emotionPredict = async (input: string) => {
-  const model = await tf.loadLayersModel(config.modelSavePath + "/model.json");
+  const model = await tf.loadLayersModel(`file://${config.modelDir}/model.json`);
   const tokenizedInput = sentence2Token(input, config.maxWordNum);
   const inputTensor = tf
     .tensor2d([tokenizedInput])
-    .reshape([1, config.maxWordNum, 1]);
-  return model.predict(inputTensor);
+  const result = await model.predict(inputTensor);
+  console.log((result as tf.Tensor).dataSync(), (result as tf.Tensor).argMax(1).dataSync()[0]);
+  return (result as tf.Tensor).argMax(1).dataSync()[0];
 };
+
+const testAccuracy = async () => {
+  let currectCount = 0;
+  let wrongCount = 0;
+  const model = await tf.loadLayersModel(`file://${config.modelDir}/model.json`);
+  const rateText = readFileSync(`${config.dataSetDir}/test-rate-100.txt`, "utf-8");
+  const currectAnswer: number[] = rateText.split("\r\n").map((str) => str.replace(/"/g, "")).map(Number)
+  const commentsText = readFileSync(`${config.dataSetDir}/test-comments-100.txt`, "utf-8");
+  const comments: number[][] = commentsText.split("\r\n").map((str) => str.replace(/"/g, "")).map(str => sentence2Token(str, config.maxWordNum));
+  
+  comments.forEach(async (comment, index) => {
+    const inputTensor = tf.tensor2d([comment]);
+    const result = await model.predict(inputTensor);
+    const predict = (result as tf.Tensor).argMax(1).dataSync()[0];
+    if (predict === currectAnswer[index]) {
+      currectCount++;
+    } else {
+      wrongCount++;
+    }
+    index === 99 && console.log(`currectCount: ${currectCount}, wrongCount: ${wrongCount}， accuracy: ${currectCount / (currectCount + wrongCount)}`)
+  })
+}
 
 export { emotionTrain, emotionPredict };

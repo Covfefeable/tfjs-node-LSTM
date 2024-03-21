@@ -44,7 +44,7 @@ const emotionTrain = async () => {
 
   model.add(
     tf.layers.dropout({
-      rate: 0.2,
+      rate: 0.3,
     })
   );
 
@@ -56,7 +56,7 @@ const emotionTrain = async () => {
   );
   model.add(
     tf.layers.dropout({
-      rate: 0.2,
+      rate: 0.3,
     })
   );
 

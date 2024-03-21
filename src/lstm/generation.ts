@@ -11,7 +11,7 @@ const config = {
 };
 
 const generationTrain = async () => {
-  if (!fs.existsSync(`file://${config.dataSetDir}/wordArr.json`)) {
+  if (!fs.existsSync(`${config.dataSetDir}/wordArr.json`)) {
     console.log("preparing training data, it may take a while");
     tokenlize(`${config.dataSetDir}/comments.txt`);
   }

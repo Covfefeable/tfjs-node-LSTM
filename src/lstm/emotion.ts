@@ -37,7 +37,7 @@ const emotionTrain = async () => {
   );
   model.add(
     tf.layers.lstm({
-      units: 256,
+      units: 128,
       returnSequences: true,
     })
   );
@@ -51,16 +51,9 @@ const emotionTrain = async () => {
   model.add(
     tf.layers.lstm({
       units: 128,
-      returnSequences: true,
+      returnSequences: false,
     })
   );
-  model.add(
-    tf.layers.dropout({
-      rate: 0.3,
-    })
-  );
-
-  model.add(tf.layers.flatten());
   model.add(tf.layers.dense({ units: 2, activation: "softmax" }));
   model.compile({
     loss: "categoricalCrossentropy",
@@ -94,9 +87,9 @@ const testAccuracy = async () => {
   let currectCount = 0;
   let wrongCount = 0;
   const model = await tf.loadLayersModel(`file://${config.modelDir}/model.json`);
-  const rateText = readFileSync(`${config.dataSetDir}/test-rate-100.txt`, "utf-8");
+  const rateText = readFileSync(`${config.dataSetDir}/test-rate-500.txt`, "utf-8");
   const currectAnswer: number[] = rateText.split("\r\n").map((str) => str.replace(/"/g, "")).map(Number)
-  const commentsText = readFileSync(`${config.dataSetDir}/test-comments-100.txt`, "utf-8");
+  const commentsText = readFileSync(`${config.dataSetDir}/test-comments-500.txt`, "utf-8");
   const comments: number[][] = commentsText.split("\r\n").map((str) => str.replace(/"/g, "")).map(str => sentence2Token(str, config.maxWordNum));
   
   comments.forEach(async (comment, index) => {
@@ -108,7 +101,7 @@ const testAccuracy = async () => {
     } else {
       wrongCount++;
     }
-    index === 99 && console.log(`currectCount: ${currectCount}, wrongCount: ${wrongCount}， accuracy: ${currectCount / (currectCount + wrongCount)}`)
+    index === 499 && console.log(`currectCount: ${currectCount}, wrongCount: ${wrongCount}， accuracy: ${currectCount / (currectCount + wrongCount)}`)
   })
 }
 

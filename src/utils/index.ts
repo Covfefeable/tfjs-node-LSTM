@@ -15,10 +15,11 @@ const tokenlize = (filePath: string, maxWordNum: number = 20) => {
   const arr = data.split("\r\n").map((str) => str.replace(/"/g, ""));
 
   // 生成词表
-  fs.writeFileSync(
-    `./src/dataset/wordArr.json`,
-    JSON.stringify(doSegment(arr.join("")))
-  );
+  const wordArr: string[] = [];
+  arr.forEach((comment) => {
+    doSegment(comment).forEach((word) => wordArr.push(word));
+  })
+  fs.writeFileSync(`./src/dataset/wordArr.json`, JSON.stringify(wordArr));
   console.log("wordArr.json generated (1/5)")
 
   // 生成去重词表

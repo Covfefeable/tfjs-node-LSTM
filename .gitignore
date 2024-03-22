@@ -1,5 +1,6 @@
 node_modules
 build
-src/model/
+src/model/emotion/*
+src/model/generation/*
 src/dataset/word*
 src/dataset/sentences*

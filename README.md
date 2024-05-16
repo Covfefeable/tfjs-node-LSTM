@@ -20,4 +20,8 @@ curl http://127.0.0.1:1337/api/generation/train
 
 ## Note
 
-* when you are trying to train the text generater model with onehot encoded input, note that the training data shouldn't be too large, otherwise nodejs will crash due to memory overflow. 800 lines is a good choice to start with.
+* if running on windows, @tensorflow/tfjs-node version better be 3.18.0
+
+* when you are trying to train the text generater model with onehot encoded input, note that the training data shouldn't be too large, otherwise nodejs will crash due to memory overflow. 2000 lines is a good choice to start with.
+
+* if encountering memory overflow problem, try install the `increase-memory-limit` package globally and run the command `increase-memory-limit` from the root directory of the project.

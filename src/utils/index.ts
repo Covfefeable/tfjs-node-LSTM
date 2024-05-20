@@ -16,24 +16,24 @@ const tokenlize = (filePath: string, maxWordNum: number = 20) => {
 
   // 生成词表
   const wordArr: string[] = [];
-  arr.forEach((comment) => {
-    doSegment(comment).forEach((word) => wordArr.push(word));
-  })
-  fs.writeFileSync(`./src/dataset/wordArr.json`, JSON.stringify(wordArr));
-  console.log("wordArr.json generated (1/5)")
-
   // 生成去重词表
   const wordSet: Set<string> = new Set();
   // 0与空字符串对应
   wordSet.add("");
-  arr.forEach((comment) => {
-    doSegment(comment).forEach((word) => wordSet.add(word));
+  arr.forEach((comment, index) => {
+    console.log(`handling: ${comment} (${index + 1}/${arr.length})`);
+    doSegment(comment).forEach((word, index) => {
+      wordArr.push(word);
+      wordSet.add(word);
+    });
   });
+  fs.writeFileSync(`./src/dataset/wordArr.json`, JSON.stringify(wordArr));
+  console.log("wordArr.json generated (1/5)");
   fs.writeFileSync(
     `./src/dataset/wordSet.json`,
     JSON.stringify(Array.from(wordSet))
   );
-  console.log("wordSet.json generated (2/5)")
+  console.log("wordSet.json generated (2/5)");
 
   // 生成词表映射
   const wordMap: Record<string, number> = {};
@@ -41,7 +41,7 @@ const tokenlize = (filePath: string, maxWordNum: number = 20) => {
     wordMap[word] = index;
   });
   fs.writeFileSync(`./src/dataset/wordMap.json`, JSON.stringify(wordMap));
-  console.log("wordMap.json generated (3/5)")
+  console.log("wordMap.json generated (3/5)");
 
   // 生成词表反向映射
   const wordMapReverse: Record<number, string> = {};
@@ -52,12 +52,12 @@ const tokenlize = (filePath: string, maxWordNum: number = 20) => {
     `./src/dataset/wordMapReverse.json`,
     JSON.stringify(wordMapReverse)
   );
-  console.log("wordMapReverse.json generated (4/5)")
+  console.log("wordMapReverse.json generated (4/5)");
 
   // 生成句单位数组
   const sentences = arr.map((str) => sentence2Token(str, maxWordNum));
   fs.writeFileSync(`./src/dataset/sentences.json`, JSON.stringify(sentences));
-  console.log("sentences.json generated (5/5)")
+  console.log("sentences.json generated (5/5)");
 };
 
 const sentence2Token = (str: string, maxWordNum: number = 20): number[] => {

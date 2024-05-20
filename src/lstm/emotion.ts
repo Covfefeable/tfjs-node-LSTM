@@ -23,7 +23,10 @@ const emotionTrain = async () => {
     fs.readFileSync(`${config.dataSetDir}/sentences.json`, "utf-8")
   );
   const rateText = readFileSync(`${config.dataSetDir}/rate.txt`, "utf-8");
-  const rate: number[] = rateText.split("\r\n").map((str) => str.replace(/"/g, "")).map(Number)
+  const rate: number[] = rateText
+    .split("\r\n")
+    .map((str) => str.replace(/"/g, ""))
+    .map(Number);
   const input = tf.tensor2d(sentences);
   const output = tf.oneHot(tf.tensor(rate).cast("int32"), 2);
 
@@ -35,6 +38,35 @@ const emotionTrain = async () => {
       inputLength: config.maxWordNum,
     })
   );
+
+  model.add(
+    tf.layers.conv1d({
+      filters: 128,
+      kernelSize: [3],
+      activation: "relu",
+    })
+  );
+
+  model.add(
+    tf.layers.maxPooling1d({
+      poolSize: [2],
+    })
+  );
+
+  model.add(
+    tf.layers.conv1d({
+      filters: 128,
+      kernelSize: [3],
+      activation: "relu",
+    })
+  );
+
+  model.add(
+    tf.layers.maxPooling1d({
+      poolSize: [2],
+    })
+  );
+
   model.add(
     tf.layers.lstm({
       units: 128,
@@ -43,8 +75,14 @@ const emotionTrain = async () => {
   );
 
   model.add(
+    tf.layers.bidirectional({
+      layer: tf.layers.lstm({ units: 128, returnSequences: true }),
+    })
+  );
+
+  model.add(
     tf.layers.dropout({
-      rate: 0.3,
+      rate: 0.1,
     })
   );
 
@@ -74,24 +112,42 @@ const emotionTrain = async () => {
 };
 
 const emotionPredict = async (input: string) => {
-  const model = await tf.loadLayersModel(`file://${config.modelDir}/model.json`);
+  const model = await tf.loadLayersModel(
+    `file://${config.modelDir}/model.json`
+  );
   const tokenizedInput = sentence2Token(input, config.maxWordNum);
-  const inputTensor = tf
-    .tensor2d([tokenizedInput])
+  const inputTensor = tf.tensor2d([tokenizedInput]);
   const result = await model.predict(inputTensor);
-  console.log((result as tf.Tensor).dataSync(), (result as tf.Tensor).argMax(1).dataSync()[0]);
+  console.log(
+    (result as tf.Tensor).dataSync(),
+    (result as tf.Tensor).argMax(1).dataSync()[0]
+  );
   return (result as tf.Tensor).argMax(1).dataSync()[0];
 };
 
 const testAccuracy = async () => {
   let currectCount = 0;
   let wrongCount = 0;
-  const model = await tf.loadLayersModel(`file://${config.modelDir}/model.json`);
-  const rateText = readFileSync(`${config.dataSetDir}/test-rate-500.txt`, "utf-8");
-  const currectAnswer: number[] = rateText.split("\r\n").map((str) => str.replace(/"/g, "")).map(Number)
-  const commentsText = readFileSync(`${config.dataSetDir}/test-comments-500.txt`, "utf-8");
-  const comments: number[][] = commentsText.split("\r\n").map((str) => str.replace(/"/g, "")).map(str => sentence2Token(str, config.maxWordNum));
-  
+  const model = await tf.loadLayersModel(
+    `file://${config.modelDir}/model.json`
+  );
+  const rateText = readFileSync(
+    `${config.dataSetDir}/test-rate-300.txt`,
+    "utf-8"
+  );
+  const currectAnswer: number[] = rateText
+    .split("\r\n")
+    .map((str) => str.replace(/"/g, ""))
+    .map(Number);
+  const commentsText = readFileSync(
+    `${config.dataSetDir}/test-comments-300.txt`,
+    "utf-8"
+  );
+  const comments: number[][] = commentsText
+    .split("\r\n")
+    .map((str) => str.replace(/"/g, ""))
+    .map((str) => sentence2Token(str, config.maxWordNum));
+
   comments.forEach(async (comment, index) => {
     const inputTensor = tf.tensor2d([comment]);
     const result = await model.predict(inputTensor);
@@ -101,8 +157,13 @@ const testAccuracy = async () => {
     } else {
       wrongCount++;
     }
-    index === 499 && console.log(`currectCount: ${currectCount}, wrongCount: ${wrongCount}， accuracy: ${currectCount / (currectCount + wrongCount)}`)
-  })
-}
+    index === 299 &&
+      console.log(
+        `currectCount: ${currectCount}, wrongCount: ${wrongCount}， accuracy: ${
+          currectCount / (currectCount + wrongCount)
+        }`
+      );
+  });
+};
 
 export { emotionTrain, emotionPredict };

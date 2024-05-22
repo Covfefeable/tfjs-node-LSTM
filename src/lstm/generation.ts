@@ -66,14 +66,14 @@ const generationTrain = async () => {
     model.add(
       tf.layers.embedding({
         inputDim: wordSet.length,
-        outputDim: 128,
+        outputDim: 12,
         inputLength: config.maxWordNum,
       })
     );
 
     model.add(
       tf.layers.lstm({
-        units: 256,
+        units: 20,
         returnSequences: true,
       })
     );
@@ -86,7 +86,7 @@ const generationTrain = async () => {
 
     model.add(
       tf.layers.lstm({
-        units: 128,
+        units: 20,
         returnSequences: true,
         // goBackwards: true,
       })

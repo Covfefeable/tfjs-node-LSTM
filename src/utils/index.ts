@@ -21,7 +21,7 @@ const tokenlize = (filePath: string, maxWordNum: number = 20) => {
   // 0与空字符串对应
   wordSet.add("");
   arr.forEach((comment, index) => {
-    console.log(`handling: ${comment} (${index + 1}/${arr.length})`);
+    console.log(`(${index + 1}/${arr.length}) handling: ${comment}`);
     doSegment(comment).forEach((word, index) => {
       wordArr.push(word);
       wordSet.add(word);
@@ -55,7 +55,10 @@ const tokenlize = (filePath: string, maxWordNum: number = 20) => {
   console.log("wordMapReverse.json generated (4/5)");
 
   // 生成句单位数组
-  const sentences = arr.map((str) => sentence2Token(str, maxWordNum));
+  const sentences = arr.map((str, index) => {
+    console.log(` (${index + 1}/${arr.length}) handling: ${str}`);
+    return sentence2Token(str, maxWordNum);
+  });
   fs.writeFileSync(`./src/dataset/sentences.json`, JSON.stringify(sentences));
   console.log("sentences.json generated (5/5)");
 };

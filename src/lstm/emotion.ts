@@ -34,49 +34,15 @@ const emotionTrain = async () => {
   model.add(
     tf.layers.embedding({
       inputDim: wordSet.length,
-      outputDim: 128,
+      outputDim: 8,
       inputLength: config.maxWordNum,
     })
   );
 
   model.add(
-    tf.layers.conv1d({
-      filters: 128,
-      kernelSize: [3],
-      activation: "relu",
-    })
-  );
-
-  model.add(
-    tf.layers.maxPooling1d({
-      poolSize: [2],
-    })
-  );
-
-  model.add(
-    tf.layers.conv1d({
-      filters: 128,
-      kernelSize: [3],
-      activation: "relu",
-    })
-  );
-
-  model.add(
-    tf.layers.maxPooling1d({
-      poolSize: [2],
-    })
-  );
-
-  model.add(
     tf.layers.lstm({
-      units: 128,
+      units: 24,
       returnSequences: true,
-    })
-  );
-
-  model.add(
-    tf.layers.bidirectional({
-      layer: tf.layers.lstm({ units: 128, returnSequences: true }),
     })
   );
 
@@ -88,7 +54,7 @@ const emotionTrain = async () => {
 
   model.add(
     tf.layers.lstm({
-      units: 128,
+      units: 24,
       returnSequences: false,
     })
   );
